@@ -244,6 +244,16 @@
     const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
     const rand = (a, b) => Math.random() * (b - a) + a;
     const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+    function roundRectPath(c, x, y, w, h, r) {
+      const rr = Math.min(r, w * 0.5, h * 0.5);
+      c.beginPath();
+      c.moveTo(x + rr, y);
+      c.arcTo(x + w, y, x + w, y + h, rr);
+      c.arcTo(x + w, y + h, x, y + h, rr);
+      c.arcTo(x, y + h, x, y, rr);
+      c.arcTo(x, y, x + w, y, rr);
+      c.closePath();
+    }
     function withAlpha(color, alpha) {
       if (color.startsWith("#")) {
         const h = color.slice(1);
@@ -362,6 +372,7 @@
       comboMulti: 1,
       comboTimer: 0,
       comboFlash: 0,
+      flash: 0,
       nextSpeedTick: 5.5,
       regenTimer: 20,
       shieldActive: false,
@@ -384,7 +395,8 @@
         paddle: null,
         brickSprites: {},
         cracks: []
-      }
+      },
+      twinkles: []
     };
 
     // -----------------------------
@@ -496,7 +508,25 @@
         cctx.fillRect(x, y, s, s);
       }
 
+      // Static, low-cost vignette strips for depth.
+      cctx.fillStyle = "rgba(0,20,70,0.18)";
+      cctx.fillRect(0, 0, W, H * 0.12);
+      cctx.fillRect(0, H * 0.86, W, H * 0.14);
+
       game.assets.bg = c;
+
+      // Tiny animated twinkles (very small count, cheap runtime update).
+      game.twinkles = [];
+      const twinkleCount = Math.max(12, Math.floor((W * H) / 26000));
+      for (let i = 0; i < twinkleCount; i++) {
+        game.twinkles.push({
+          x: rand(0, W),
+          y: rand(0, H),
+          s: Math.random() < 0.8 ? 1 : 2,
+          phase: rand(0, Math.PI * 2),
+          speed: rand(0.8, 1.8)
+        });
+      }
     }
 
     function buildBallSprite() {
@@ -532,10 +562,17 @@
       g.addColorStop(0, "#00d4ff");
       g.addColorStop(1, "#0055ff");
       cctx.fillStyle = g;
-      cctx.fillRect(0, 0, width, height);
+      roundRectPath(cctx, 0, 0, width, height, Math.max(2, height * 0.35));
+      cctx.fill();
+      cctx.fillStyle = "rgba(255,255,255,0.2)";
+      cctx.fillRect(width * 0.06, 0, width * 0.88, Math.max(2, height * 0.23));
+      cctx.fillStyle = "rgba(255,255,255,0.3)";
+      cctx.fillRect(0, height * 0.2, Math.max(2, width * 0.03), height * 0.6);
+      cctx.fillRect(width - Math.max(2, width * 0.03), height * 0.2, Math.max(2, width * 0.03), height * 0.6);
       cctx.strokeStyle = "#ffffff";
       cctx.lineWidth = Math.max(1, width * 0.012);
-      cctx.strokeRect(cctx.lineWidth * 0.5, cctx.lineWidth * 0.5, width - cctx.lineWidth, height - cctx.lineWidth);
+      roundRectPath(cctx, cctx.lineWidth * 0.5, cctx.lineWidth * 0.5, width - cctx.lineWidth, height - cctx.lineWidth, Math.max(2, height * 0.35));
+      cctx.stroke();
       game.assets.paddle = c;
       game.lastPaddleSpriteW = width;
     }
@@ -548,6 +585,11 @@
         const cctx = c.getContext("2d");
         cctx.fillStyle = def.color;
         cctx.fillRect(0, 0, brickW, brickH);
+        cctx.strokeStyle = "rgba(220,245,255,0.25)";
+        cctx.lineWidth = Math.max(1, brickW * 0.02);
+        cctx.strokeRect(cctx.lineWidth * 0.5, cctx.lineWidth * 0.5, brickW - cctx.lineWidth, brickH - cctx.lineWidth);
+        cctx.fillStyle = "rgba(255,255,255,0.12)";
+        cctx.fillRect(0, 0, brickW, Math.max(2, brickH * 0.2));
 
         if (name === "Obsidian") {
           cctx.strokeStyle = def.edge;
@@ -1087,9 +1129,9 @@
 
       if (brick.type === "Cursed") {
         Audio.brickHit(def.pitch);
-        spawnExplosion(source.x, source.y, def.particle, 4);
-        vibrate(8);
-        return;
+      spawnExplosion(source.x, source.y, def.particle, 4);
+      vibrate(8);
+      return;
       }
 
       brick.hp = forceDestroy ? 0 : brick.hp - 1;
@@ -1112,6 +1154,7 @@
 
       Audio.brickHit(def.pitch);
       vibrate(12);
+      game.flash = Math.min(0.2, game.flash + (destroyed ? 0.055 : 0.03));
       updateHUD();
       saveGame();
 
@@ -1169,6 +1212,7 @@
     function loseLife() {
       game.lives--;
       game.shake = 0.35;
+      game.flash = 0.14;
       Audio.lifeLost();
       vibrate(110);
       saveGame();
@@ -1423,6 +1467,7 @@
       game.popups = game.popups.filter((p) => p.t < p.life);
 
       if (game.shake > 0) game.shake -= dt;
+      if (game.flash > 0) game.flash -= dt * 0.9;
     }
 
     // -----------------------------
@@ -1430,6 +1475,12 @@
     // -----------------------------
     function renderBackground() {
       ctx.drawImage(game.assets.bg, 0, 0, W, H);
+      const t = performance.now() * 0.001;
+      for (const s of game.twinkles) {
+        const a = 0.2 + ((Math.sin(t * s.speed + s.phase) + 1) * 0.25);
+        ctx.fillStyle = `rgba(210,235,255,${a})`;
+        ctx.fillRect(s.x, s.y, s.s, s.s);
+      }
     }
 
     function renderBricks() {
@@ -1502,7 +1553,10 @@
       for (const p of game.powerups) {
         const def = POWERUPS[p.type];
         ctx.fillStyle = def.negative ? "#ff4b4b" : def.color;
-        ctx.fillRect(p.x - p.w * 0.5, p.y - p.h * 0.5, p.w, p.h);
+        roundRectPath(ctx, p.x - p.w * 0.5, p.y - p.h * 0.5, p.w, p.h, Math.max(4, p.h * 0.3));
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.16)";
+        ctx.fillRect(p.x - p.w * 0.42, p.y - p.h * 0.5, p.w * 0.84, Math.max(2, p.h * 0.22));
         ctx.fillStyle = "#0a0e2e";
         ctx.font = `bold ${Math.max(9, W * 0.025)}px Trebuchet MS, sans-serif`;
         ctx.textAlign = "center";
@@ -1556,7 +1610,8 @@
         const d = POWERUPS[e.type];
         ctx.fillStyle = "rgba(8,18,50,0.86)";
         ctx.strokeStyle = "rgba(0,180,255,0.35)";
-        ctx.fillRect(x, y, boxW, boxH);
+        roundRectPath(ctx, x, y, boxW, boxH, Math.max(4, boxH * 0.25));
+        ctx.fill();
         ctx.strokeRect(x, y, boxW, boxH);
 
         ctx.fillStyle = d.color;
@@ -1591,6 +1646,10 @@
       renderParticlesAndPopups();
       renderActivePowerBar();
       renderCombo();
+      if (game.flash > 0) {
+        ctx.fillStyle = `rgba(140,210,255,${game.flash})`;
+        ctx.fillRect(0, 0, W, H);
+      }
       ctx.restore();
     }
 
