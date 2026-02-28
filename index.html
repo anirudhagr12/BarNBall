@@ -310,10 +310,10 @@
       fire: { name: "Napalm", emoji: "🔥", color: "#ffd34a", dur: 5 },
       laser: { name: "Pew Pew", emoji: "🔫", color: "#d086ff", dur: 8 },
       life: { name: "One More Go", emoji: "❤️", color: "#ffffff", dur: 0 },
-      slow: { name: "Chill Pill", emoji: "🧊", color: "#58dfff", dur: 7 },
-      sticky: { name: "Glue Trap", emoji: "🍯", color: "#ff9b35", dur: 9 },
+      slow: { name: "Chill Pill", emoji: "🧊", color: "#58dfff", dur: 6 },
+      sticky: { name: "Glue Trap", emoji: "🍯", color: "#ff9b35", dur: 0 },
       shield: { name: "Safety Net", emoji: "🛡️", color: "#72ffe4", dur: 0 },
-      bomb: { name: "The Nuke", emoji: "💣", color: "#ff7f2d", dur: 8 }
+      bomb: { name: "The Nuke", emoji: "💣", color: "#ff7f2d", dur: 0 }
     };
 
     const BRICKS = {
@@ -385,9 +385,17 @@
       particles: [],
       trails: [],
       popups: [],
-      powerTimers: { fire: 0, laser: 0, slow: 0, sticky: 0, expand: 0, shrink: 0, bomb: 0 },
-      powerMax: { fire: 5, laser: 8, slow: 7, sticky: 9, expand: 12, shrink: 10, bomb: 8 },
-      paddle: { x: 120, y: 560, w: 70, h: 14, stickyHold: false },
+      powerTimers: { fire: 0, laser: 0, slow: 0, expand: 0, shrink: 0 },
+      powerMax: { fire: 5, laser: 8, slow: 6, expand: 12, shrink: 10 },
+      powerState: {
+        stickyPaddle: false,
+        bombArmed: false,
+        shieldCharges: 0,
+        shieldMaxCharges: 0,
+        sizeMode: null,
+        sizeOriginalW: 0
+      },
+      paddle: { x: 120, y: 560, w: 70, h: 14 },
       lastPaddleSpriteW: 0,
       assets: {
         bg: null,
@@ -741,7 +749,8 @@
         comboMulti: game.comboMulti,
         regenTimer: game.regenTimer,
         shieldActive: game.shieldActive,
-        paddle: { x: game.paddle.x, w: game.paddle.w, stickyHold: game.paddle.stickyHold },
+        powerState: { ...game.powerState },
+        paddle: { x: game.paddle.x, w: game.paddle.w },
         bricks: game.bricks.map((b) => ({ ...b })),
         balls: game.balls.map((b) => ({ ...b })),
         powerups: game.powerups.map((p) => ({ ...p })),
@@ -849,6 +858,12 @@
       game.comboFlash = 0;
       game.regenTimer = 20;
       game.shieldActive = false;
+      game.powerState.stickyPaddle = false;
+      game.powerState.bombArmed = false;
+      game.powerState.shieldCharges = 0;
+      game.powerState.shieldMaxCharges = 0;
+      game.powerState.sizeMode = null;
+      game.powerState.sizeOriginalW = 0;
       for (const k of Object.keys(game.powerTimers)) game.powerTimers[k] = 0;
     }
 
@@ -862,27 +877,13 @@
         vy: -speed,
         r: metrics.ballR,
         stuck,
+        stuckOffsetX: 0,
         fire: game.powerTimers.fire > 0,
-        bomb: game.powerTimers.bomb > 0,
+        bomb: game.powerState.bombArmed,
+        slowRestoreSpeed: game.powerTimers.slow > 0 ? (speed / 0.6) : 0,
         targetSpeed: target,
         launchRamp: 0.3
       });
-    }
-
-    function launchHeldBalls() {
-      for (const b of game.balls) {
-        if (!b.stuck) continue;
-        const dx = clamp((game.pointerX - (game.paddle.x + game.paddle.w * 0.5)) / (game.paddle.w * 0.5), -1, 1);
-        const angle = -Math.PI * 0.5 + dx * 0.95;
-        const target = getBallSpeed();
-        const speed = target * 0.82;
-        b.vx = Math.cos(angle) * speed;
-        b.vy = Math.sin(angle) * speed;
-        b.targetSpeed = target;
-        b.launchRamp = 0.3;
-        b.stuck = false;
-      }
-      game.paddle.stickyHold = false;
     }
 
     function loadLevel(level, showIntro = true) {
@@ -930,18 +931,26 @@
       game.comboMulti = data.comboMulti || 1;
       game.regenTimer = data.regenTimer || 20;
       game.shieldActive = !!data.shieldActive;
+      game.powerState = { ...game.powerState, ...(data.powerState || {}) };
 
       game.bricks = (data.bricks || []).map((b) => ({ ...b }));
-      game.balls = (data.balls || []).map((b) => ({ ...b, r: metrics.ballR }));
+      game.balls = (data.balls || []).map((b) => ({
+        ...b,
+        r: metrics.ballR,
+        stuckOffsetX: b.stuckOffsetX || 0,
+        slowRestoreSpeed: b.slowRestoreSpeed || 0
+      }));
       game.powerups = (data.powerups || []).map((p) => ({ ...p }));
-      game.powerTimers = { ...game.powerTimers, ...(data.powerTimers || {}) };
+      if (data.powerTimers) {
+        for (const k of Object.keys(game.powerTimers)) {
+          if (typeof data.powerTimers[k] === "number") game.powerTimers[k] = data.powerTimers[k];
+        }
+      }
 
       game.paddle.w = data.paddle?.w || metrics.paddleW;
       game.paddle.h = metrics.paddleH;
       game.paddle.y = H - game.paddle.h - H * 0.036;
       game.paddle.x = clamp(data.paddle?.x || W * 0.5, 0, W - game.paddle.w);
-      game.paddle.stickyHold = !!data.paddle?.stickyHold;
-
       if (game.bricks.length) buildBrickAssets(game.bricks[0].w, game.bricks[0].h);
       buildPaddleSprite(game.paddle.w, game.paddle.h);
       if (!game.balls.length) spawnBall(true);
@@ -970,10 +979,10 @@
     function setPointer(x) {
       game.pointerX = clamp(x, 0, W);
       game.paddle.x = clamp(game.pointerX - game.paddle.w * 0.5, 0, W - game.paddle.w);
-      if (game.state === "ready" || game.paddle.stickyHold) {
+      if (game.state === "ready" || game.balls.some((b) => b.stuck)) {
         for (const b of game.balls) {
           if (!b.stuck) continue;
-          b.x = game.paddle.x + game.paddle.w * 0.5;
+          b.x = game.paddle.x + game.paddle.w * 0.5 + (b.stuckOffsetX || 0);
           b.y = game.paddle.y - b.r - H * 0.003;
         }
       }
@@ -982,13 +991,12 @@
     function onPress() {
       Audio.brickHit(1);
       if (game.paused) return;
-      if (game.state === "ready") {
-        game.state = "playing";
-        launchHeldBalls();
+      if (game.balls.some((b) => b.stuck)) {
+        if (game.state === "ready") game.state = "playing";
+        launchOneStuckBall();
         return;
       }
       if (game.powerTimers.laser > 0) fireLasers();
-      if (game.powerTimers.sticky > 0 && game.paddle.stickyHold) launchHeldBalls();
     }
 
     function fireLasers() {
@@ -1003,6 +1011,73 @@
     // -----------------------------
     // Gameplay Helpers
     // -----------------------------
+    function nonStuckBallCount() {
+      return Math.max(1, game.balls.filter((b) => !b.stuck).length);
+    }
+
+    function clearBombArmed() {
+      game.powerState.bombArmed = false;
+      game.balls.forEach((b) => { b.bomb = false; });
+    }
+
+    function clearTimedPowerups() {
+      game.powerTimers.fire = 0;
+      game.powerTimers.laser = 0;
+      game.powerTimers.slow = 0;
+      game.powerTimers.expand = 0;
+      game.powerTimers.shrink = 0;
+      game.lasers.length = 0;
+      game.balls.forEach((b) => {
+        b.fire = false;
+        b.bomb = false;
+        b.slowRestoreSpeed = 0;
+      });
+      game.powerState.stickyPaddle = false;
+      game.powerState.bombArmed = false;
+      game.powerState.sizeMode = null;
+      game.powerState.sizeOriginalW = 0;
+    }
+
+    function resetForLifeLoss() {
+      clearTimedPowerups();
+      game.shieldActive = false;
+      game.powerState.shieldCharges = 0;
+      game.powerState.shieldMaxCharges = 0;
+      game.nextSpeedTick = 5.5;
+      game.powerups.length = 0;
+      game.lasers.length = 0;
+      game.trails.length = 0;
+      game.paddle.w = metrics.paddleW;
+      game.paddle.x = clamp(game.paddle.x, 0, W - game.paddle.w);
+      buildPaddleSprite(game.paddle.w, game.paddle.h);
+    }
+
+    function stickBallToPaddle(ball) {
+      const center = game.paddle.x + game.paddle.w * 0.5;
+      ball.stuck = true;
+      ball.vx = 0;
+      ball.vy = 0;
+      ball.stuckOffsetX = clamp(ball.x - center, -game.paddle.w * 0.45, game.paddle.w * 0.45);
+    }
+
+    function launchOneStuckBall() {
+      const stuckBalls = game.balls.filter((b) => b.stuck);
+      if (!stuckBalls.length) return false;
+      const b = stuckBalls[0];
+      const rel = clamp((b.x - (game.paddle.x + game.paddle.w * 0.5)) / (game.paddle.w * 0.5), -1, 1);
+      const angle = -Math.PI * 0.5 + rel * 1.15;
+      const target = getBallSpeed();
+      const speed = target * 0.82;
+      b.vx = Math.cos(angle) * speed;
+      b.vy = Math.sin(angle) * speed;
+      b.targetSpeed = target;
+      b.launchRamp = 0.3;
+      b.stuck = false;
+      b.stuckOffsetX = 0;
+      if (game.powerState.stickyPaddle) game.powerState.stickyPaddle = false;
+      return true;
+    }
+
     function maybeDropPowerup(x, y) {
       if (Math.random() > 0.28) return;
       const negBoost = 1 + (game.level - 1) * 0.08;
@@ -1037,35 +1112,40 @@
       if (type === "multi") {
         const src = game.balls.find((b) => !b.stuck) || game.balls[0];
         if (src) {
+          const baseA = Math.atan2(src.vy || -1, src.vx || 0);
           const speed = Math.hypot(src.vx, src.vy) || getBallSpeed();
-          for (let i = -1; i <= 1; i++) {
-            const a = Math.atan2(src.vy, src.vx) + i * 0.34;
-            game.balls.push({
+          const next = [];
+          [-0.34, 0, 0.34].forEach((off) => {
+            const a = baseA + off;
+            next.push({
               x: src.x,
               y: src.y,
               r: metrics.ballR,
               vx: Math.cos(a) * speed,
               vy: Math.sin(a) * speed,
               stuck: false,
+              stuckOffsetX: 0,
               fire: game.powerTimers.fire > 0,
-              bomb: game.powerTimers.bomb > 0,
+              bomb: game.powerState.bombArmed,
+              slowRestoreSpeed: game.powerTimers.slow > 0 ? (speed / 0.6) : 0,
               launchRamp: 0,
               targetSpeed: speed
             });
-          }
+          });
+          game.balls = next;
         }
       }
       if (type === "expand") {
+        if (!game.powerState.sizeMode) game.powerState.sizeOriginalW = game.paddle.w;
+        game.powerState.sizeMode = "expand";
         game.powerTimers.expand = game.powerMax.expand;
         game.powerTimers.shrink = 0;
-        game.paddle.w = clamp(W * 0.27, W * 0.15, W * 0.52);
-        buildPaddleSprite(game.paddle.w, game.paddle.h);
       }
       if (type === "shrink") {
+        if (!game.powerState.sizeMode) game.powerState.sizeOriginalW = game.paddle.w;
+        game.powerState.sizeMode = "shrink";
         game.powerTimers.shrink = game.powerMax.shrink;
         game.powerTimers.expand = 0;
-        game.paddle.w = clamp(W * 0.12, W * 0.1, W * 0.5);
-        buildPaddleSprite(game.paddle.w, game.paddle.h);
       }
       if (type === "fire") {
         game.powerTimers.fire = game.powerMax.fire;
@@ -1073,11 +1153,28 @@
       }
       if (type === "laser") game.powerTimers.laser = game.powerMax.laser;
       if (type === "life") game.lives++;
-      if (type === "slow") game.powerTimers.slow = game.powerMax.slow;
-      if (type === "sticky") game.powerTimers.sticky = game.powerMax.sticky;
-      if (type === "shield") game.shieldActive = true;
+      if (type === "slow") {
+        if (game.powerTimers.slow <= 0) {
+          game.balls.forEach((b) => {
+            if (b.stuck) return;
+            b.slowRestoreSpeed = Math.hypot(b.vx, b.vy);
+            b.vx *= 0.6;
+            b.vy *= 0.6;
+            b.targetSpeed = (b.targetSpeed || getBallSpeed()) * 0.6;
+          });
+        }
+        game.powerTimers.slow = game.powerMax.slow;
+      }
+      if (type === "sticky") {
+        game.powerState.stickyPaddle = true;
+      }
+      if (type === "shield") {
+        game.shieldActive = true;
+        game.powerState.shieldMaxCharges = nonStuckBallCount();
+        game.powerState.shieldCharges = game.powerState.shieldMaxCharges;
+      }
       if (type === "bomb") {
-        game.powerTimers.bomb = game.powerMax.bomb;
+        game.powerState.bombArmed = true;
         game.balls.forEach((b) => b.bomb = true);
       }
 
@@ -1235,6 +1332,7 @@
         return;
       }
 
+      resetForLifeLoss();
       game.balls.length = 0;
       spawnBall(true);
       game.state = "ready";
@@ -1274,21 +1372,58 @@
     }
 
     function updateTimers(dt) {
+      const prevFire = game.powerTimers.fire;
+      const prevLaser = game.powerTimers.laser;
+      const prevSlow = game.powerTimers.slow;
+      const prevExpand = game.powerTimers.expand;
+      const prevShrink = game.powerTimers.shrink;
+
       for (const k of Object.keys(game.powerTimers)) {
         if (game.powerTimers[k] > 0) game.powerTimers[k] -= dt;
         if (game.powerTimers[k] < 0) game.powerTimers[k] = 0;
       }
 
-      if (game.powerTimers.fire <= 0) game.balls.forEach((b) => b.fire = false);
-      if (game.powerTimers.bomb <= 0) game.balls.forEach((b) => b.bomb = false);
+      if (prevFire > 0 && game.powerTimers.fire <= 0) {
+        game.balls.forEach((b) => b.fire = false);
+      }
 
-      if (game.powerTimers.expand <= 0 && game.powerTimers.shrink <= 0) {
-        if (Math.abs(game.paddle.w - metrics.paddleW) > 0.1) {
-          game.paddle.w += (metrics.paddleW - game.paddle.w) * Math.min(1, dt * 8);
-          game.paddle.x = clamp(game.paddle.x, 0, W - game.paddle.w);
-          if (Math.abs(game.paddle.w - game.lastPaddleSpriteW) > W * 0.008) {
-            buildPaddleSprite(game.paddle.w, game.paddle.h);
-          }
+      if (prevLaser > 0 && game.powerTimers.laser <= 0) {
+        game.lasers.length = 0;
+      }
+
+      if (prevSlow > 0 && game.powerTimers.slow <= 0) {
+        game.balls.forEach((b) => {
+          if (b.stuck) return;
+          const restore = b.slowRestoreSpeed || (Math.hypot(b.vx, b.vy) / 0.6);
+          const a = Math.atan2(b.vy, b.vx);
+          b.vx = Math.cos(a) * restore;
+          b.vy = Math.sin(a) * restore;
+          b.targetSpeed = restore;
+          b.slowRestoreSpeed = 0;
+        });
+      }
+
+      const sizeActive = game.powerTimers.expand > 0 || game.powerTimers.shrink > 0;
+      if (sizeActive) {
+        const target = game.powerState.sizeMode === "expand"
+          ? clamp(W * 0.4, W * 0.18, W * 0.4)
+          : clamp(W * 0.08, W * 0.08, W * 0.4);
+        game.paddle.w += (target - game.paddle.w) * Math.min(1, dt * 10);
+        game.paddle.x = clamp(game.paddle.x, 0, W - game.paddle.w);
+        if (Math.abs(game.paddle.w - game.lastPaddleSpriteW) > W * 0.008) {
+          buildPaddleSprite(game.paddle.w, game.paddle.h);
+        }
+      } else if (prevExpand > 0 || prevShrink > 0 || game.powerState.sizeMode) {
+        const restoreW = game.powerState.sizeOriginalW || metrics.paddleW;
+        game.paddle.w += (restoreW - game.paddle.w) * Math.min(1, dt * 10);
+        game.paddle.x = clamp(game.paddle.x, 0, W - game.paddle.w);
+        if (Math.abs(game.paddle.w - game.lastPaddleSpriteW) > W * 0.008) {
+          buildPaddleSprite(game.paddle.w, game.paddle.h);
+        }
+        if (Math.abs(game.paddle.w - restoreW) < W * 0.003) {
+          game.paddle.w = restoreW;
+          game.powerState.sizeMode = null;
+          game.powerState.sizeOriginalW = 0;
         }
       }
 
@@ -1310,11 +1445,8 @@
       ball.vy = Math.sin(angle) * speed;
       ball.y = p.y - ball.r - H * 0.001;
 
-      if (game.powerTimers.sticky > 0) {
-        ball.stuck = true;
-        ball.vx = 0;
-        ball.vy = 0;
-        game.paddle.stickyHold = true;
+      if (game.powerState.stickyPaddle) {
+        stickBallToPaddle(ball);
       }
 
       game.comboHits = 0;
@@ -1340,8 +1472,12 @@
           else ball.vy *= -1;
         }
 
-        damageBrick(brick, { x: ball.x, y: ball.y }, ball.fire);
-        if (ball.bomb && !cursed) bombExplosion(brick, { x: ball.x, y: ball.y });
+        if (ball.bomb && !cursed) {
+          bombExplosion(brick, { x: ball.x, y: ball.y });
+          clearBombArmed();
+        } else {
+          damageBrick(brick, { x: ball.x, y: ball.y }, ball.fire);
+        }
         if (!ball.fire) break;
       }
     }
@@ -1351,7 +1487,7 @@
       for (let i = 0; i < game.balls.length; i++) {
         const b = game.balls[i];
         if (b.stuck) {
-          b.x = game.paddle.x + game.paddle.w * 0.5;
+          b.x = game.paddle.x + game.paddle.w * 0.5 + (b.stuckOffsetX || 0);
           b.y = game.paddle.y - b.r - H * 0.003;
           continue;
         }
@@ -1375,8 +1511,12 @@
         if (b.y - b.r <= 0) { b.y = b.r; b.vy = Math.abs(b.vy); }
 
         if (b.y - b.r > H + H * 0.05) {
-          if (game.shieldActive) {
-            game.shieldActive = false;
+          if (game.shieldActive && game.powerState.shieldCharges > 0) {
+            game.powerState.shieldCharges--;
+            if (game.powerState.shieldCharges <= 0) {
+              game.shieldActive = false;
+              game.powerState.shieldMaxCharges = 0;
+            }
             b.y = H - H * 0.04;
             b.vy = -Math.abs(b.vy);
             showToast("🛡️ Safety Net saved you!");
@@ -1590,13 +1730,25 @@
       ctx.fillText(`x${game.comboMulti} COMBO!`, W * 0.5, H * 0.56);
     }
 
+    function renderStickyPrompt() {
+      const stuck = game.balls.find((b) => b.stuck);
+      if (!stuck) return;
+      const pulse = 0.45 + ((Math.sin(performance.now() * 0.012) + 1) * 0.25);
+      ctx.fillStyle = `rgba(210,240,255,${pulse})`;
+      ctx.font = `bold ${Math.max(10, W * 0.03)}px Trebuchet MS, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText("TAP TO LAUNCH", stuck.x, stuck.y - H * 0.03);
+    }
+
     function renderActivePowerBar() {
       const entries = [];
       for (const k of Object.keys(game.powerTimers)) {
         const t = game.powerTimers[k];
         if (t > 0 && POWERUPS[k]) entries.push({ type: k, t, max: game.powerMax[k] || 1 });
       }
-      if (game.shieldActive) entries.push({ type: "shield", t: 1, max: 1 });
+      if (game.powerState.stickyPaddle) entries.push({ type: "sticky", t: 1, max: 1 });
+      if (game.powerState.bombArmed) entries.push({ type: "bomb", t: 1, max: 1 });
+      if (game.shieldActive) entries.push({ type: "shield", t: game.powerState.shieldCharges, max: Math.max(1, game.powerState.shieldMaxCharges) });
       if (!entries.length) return;
 
       const boxW = W * 0.14;
@@ -1646,6 +1798,7 @@
       renderParticlesAndPopups();
       renderActivePowerBar();
       renderCombo();
+      renderStickyPrompt();
       if (game.flash > 0) {
         ctx.fillStyle = `rgba(140,210,255,${game.flash})`;
         ctx.fillRect(0, 0, W, H);
