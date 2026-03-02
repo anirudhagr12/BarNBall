@@ -56,6 +56,7 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+      flex-wrap: wrap;
       gap: var(--panel-gap);
       pointer-events: none;
       z-index: 6;
@@ -72,10 +73,12 @@
     #stats {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: calc(var(--hud-font) * 0.8);
       padding: calc(var(--hud-font) * 0.6) calc(var(--hud-font) * 0.7);
       font-size: var(--hud-font);
       text-shadow: 0 0 5px rgba(255, 210, 120, 0.35);
+      max-width: 72vw;
     }
 
     #lives { color: #FF7EA8; letter-spacing: 1px; }
@@ -84,6 +87,9 @@
       display: flex;
       gap: calc(var(--panel-gap) * 0.8);
       pointer-events: auto;
+      margin-left: auto;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     .btn {
@@ -116,6 +122,57 @@
     }
 
     #overlay.show { opacity: 1; pointer-events: auto; }
+
+    #guideOverlay {
+      position: absolute;
+      inset: 0;
+      z-index: 13;
+      display: none;
+      background: rgba(5, 10, 40, 0.94);
+      padding: calc(var(--hud-pad) * 1.2);
+      overflow: auto;
+      color: #DDF1FF;
+    }
+
+    #guidePanel {
+      border: 1px solid rgba(0, 170, 255, 0.35);
+      border-radius: var(--radius);
+      background: rgba(8, 18, 52, 0.95);
+      padding: calc(var(--hud-font) * 0.9);
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    #guidePanel h2 {
+      margin: 0 0 calc(var(--hud-font) * 0.6);
+      font-size: calc(var(--hud-font) * 1.4);
+      color: #E9F8FF;
+    }
+
+    #guidePanel h3 {
+      margin: calc(var(--hud-font) * 0.7) 0 calc(var(--hud-font) * 0.35);
+      font-size: calc(var(--hud-font) * 1.02);
+      color: #BFE8FF;
+    }
+
+    #guidePanel p, #guidePanel li {
+      margin: 0 0 calc(var(--hud-font) * 0.28);
+      font-size: calc(var(--hud-font) * 0.9);
+      line-height: 1.32;
+    }
+
+    #guidePanel ul {
+      margin: 0;
+      padding-left: calc(var(--hud-font) * 1.1);
+    }
+
+    .guideTop {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: calc(var(--panel-gap) * 0.8);
+      margin-bottom: calc(var(--hud-font) * 0.5);
+    }
 
     #modal {
       width: min(94vw, 480px);
@@ -201,6 +258,21 @@
       70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
       100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06); }
     }
+
+    @media (max-width: 460px) {
+      #hud {
+        align-items: stretch;
+      }
+      #stats {
+        max-width: 100%;
+      }
+      #btns {
+        width: 100%;
+      }
+      .btn {
+        flex: 1 1 auto;
+      }
+    }
   </style>
 </head>
 <body>
@@ -215,6 +287,7 @@
         <div id="hi">Hi: 0</div>
       </div>
       <div id="btns">
+        <button id="helpBtn" class="btn">Help</button>
         <button id="muteBtn" class="btn">Mute</button>
         <button id="pauseBtn" class="btn">Pause</button>
         <button id="restartBtn" class="btn">Restart</button>
@@ -229,6 +302,32 @@
         <h1 id="modalTitle">Neon Breakout</h1>
         <p id="modalText"></p>
         <div id="overlayButtons" class="row"></div>
+      </div>
+    </div>
+
+    <div id="guideOverlay">
+      <div id="guidePanel">
+        <div class="guideTop">
+          <h2>How To Play</h2>
+          <button id="closeGuideBtn" class="btn">Close</button>
+        </div>
+        <h3>Controls</h3>
+        <p>Drag anywhere to move the paddle. Tap to launch, fire lasers, or release sticky balls.</p>
+        <h3>Core Goal</h3>
+        <p>Break all non-cursed bricks to clear a level. Keep the ball above the lose zone.</p>
+        <h3>Power-Ups</h3>
+        <ul>
+          <li>🎱 Chaos Mode: exactly 3 balls</li>
+          <li>🍯 Glue Trap: next paddle hit sticks a ball; tap launches one-by-one</li>
+          <li>🛡️ Safety Net: protects bottom hits for current active ball count</li>
+          <li>💣 The Nuke: next brick hit explodes nearby bricks once</li>
+        </ul>
+        <h3>Tips</h3>
+        <ul>
+          <li>Use the cyan drag rail above the paddle as your thumb anchor.</li>
+          <li>Prioritize Titanium lanes last, clear Glass/Stone first for control.</li>
+          <li>Combo bonus grows when you avoid paddle contact between brick breaks.</li>
+        </ul>
       </div>
     </div>
 
@@ -280,6 +379,7 @@
     const levelEl = document.getElementById("level");
     const livesEl = document.getElementById("lives");
     const hiEl = document.getElementById("hi");
+    const helpBtn = document.getElementById("helpBtn");
     const muteBtn = document.getElementById("muteBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const restartBtn = document.getElementById("restartBtn");
@@ -288,6 +388,8 @@
     const modalTitle = document.getElementById("modalTitle");
     const modalText = document.getElementById("modalText");
     const overlayButtons = document.getElementById("overlayButtons");
+    const guideOverlay = document.getElementById("guideOverlay");
+    const closeGuideBtn = document.getElementById("closeGuideBtn");
 
     const toastEl = document.getElementById("toast");
     const splashEl = document.getElementById("splash");
@@ -359,6 +461,7 @@
 
     const game = {
       paused: true,
+      pausedForGuide: false,
       state: "ready",
       score: 0,
       highScore: Number(localStorage.getItem(STORAGE_HI) || 0),
@@ -705,6 +808,28 @@
       updateHUD();
     }
 
+    function guideOpen() {
+      return guideOverlay.style.display === "block";
+    }
+
+    function openGuide() {
+      if (guideOpen()) return;
+      game.pausedForGuide = !game.paused;
+      game.paused = true;
+      guideOverlay.style.display = "block";
+      updateHUD();
+    }
+
+    function closeGuide() {
+      if (!guideOpen()) return;
+      guideOverlay.style.display = "none";
+      if (game.pausedForGuide && !overlay.classList.contains("show")) {
+        game.paused = false;
+      }
+      game.pausedForGuide = false;
+      updateHUD();
+    }
+
     function updateHUD() {
       scoreEl.textContent = `Score: ${game.score}`;
       levelEl.textContent = `Level: ${game.level}`;
@@ -990,6 +1115,7 @@
 
     function onPress() {
       Audio.brickHit(1);
+      if (guideOpen()) return;
       if (game.paused) return;
       if (game.balls.some((b) => b.stuck)) {
         if (game.state === "ready") game.state = "playing";
@@ -1641,6 +1767,18 @@
           ctx.drawImage(game.assets.cracks[stage], b.x, b.y, b.w, b.h);
         }
 
+        if (b.maxHp > 1 && b.type !== "Cursed") {
+          const pipR = Math.max(1, b.h * 0.08);
+          const startX = b.x + b.w - pipR * 2.5;
+          const y = b.y + pipR * 2.4;
+          for (let i = 0; i < b.maxHp; i++) {
+            ctx.fillStyle = i < b.hp ? "rgba(220,245,255,0.9)" : "rgba(200,220,245,0.25)";
+            ctx.beginPath();
+            ctx.arc(startX - i * (pipR * 2.2), y, pipR, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
         const icon = BRICKS[b.type].icon;
         if (icon) {
           ctx.fillStyle = "rgba(230,245,255,0.92)";
@@ -1655,14 +1793,41 @@
     function renderPaddle() {
       ctx.drawImage(game.assets.paddle, game.paddle.x, game.paddle.y, game.paddle.w, game.paddle.h);
 
+      // Drag rail: gives finger-placement intuition.
+      const railW = Math.max(game.paddle.w * 0.65, W * 0.26);
+      const railH = Math.max(6, H * 0.013);
+      const railX = clamp(game.paddle.x + game.paddle.w * 0.5 - railW * 0.5, W * 0.04, W - railW - W * 0.04);
+      const railY = game.paddle.y - H * 0.028;
+      const railR = railH * 0.45;
+      ctx.fillStyle = "rgba(0,200,255,0.16)";
+      roundRectPath(ctx, railX, railY, railW, railH, railR);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(130,225,255,0.45)";
+      ctx.lineWidth = Math.max(1, W * 0.003);
+      roundRectPath(ctx, railX, railY, railW, railH, railR);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(210,245,255,0.7)";
+      ctx.font = `bold ${Math.max(8, W * 0.02)}px Trebuchet MS, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("↔ DRAG", railX + railW * 0.5, railY + railH * 0.53);
+
       if (game.shieldActive) {
-        const y = H - H * 0.015;
-        ctx.strokeStyle = "rgba(120,230,255,0.85)";
+        const y = H - H * 0.02;
+        const h = Math.max(4, H * 0.012);
+        const pulse = 0.35 + ((Math.sin(performance.now() * 0.012) + 1) * 0.2);
+        ctx.fillStyle = `rgba(60,210,255,${pulse})`;
+        ctx.fillRect(W * 0.02, y - h * 0.5, W * 0.96, h);
+        ctx.strokeStyle = "rgba(170,240,255,0.95)";
         ctx.lineWidth = Math.max(2, W * 0.005);
         ctx.beginPath();
         ctx.moveTo(W * 0.03, y);
         ctx.lineTo(W * 0.97, y);
         ctx.stroke();
+        ctx.fillStyle = "rgba(220,245,255,0.95)";
+        ctx.font = `bold ${Math.max(10, W * 0.026)}px Trebuchet MS, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText(`SAFETY NET x${Math.max(1, game.powerState.shieldCharges)}`, W * 0.5, y - h * 1.2);
       }
     }
 
@@ -1865,6 +2030,10 @@
     document.addEventListener("dblclick", (e) => e.preventDefault());
 
     window.addEventListener("keydown", (e) => {
+      if (e.code === "Escape" && guideOpen()) {
+        closeGuide();
+        return;
+      }
       if (e.code === "Space") { e.preventDefault(); onPress(); }
       if (e.code === "KeyP") togglePause();
       if (e.code === "KeyM") {
@@ -1884,6 +2053,10 @@
     });
 
     function togglePause() {
+      if (guideOpen()) {
+        closeGuide();
+        return;
+      }
       if (game.state === "gameOver") return;
       if (overlay.classList.contains("show")) {
         hideOverlay();
@@ -1900,6 +2073,11 @@
       updateHUD();
     });
 
+    helpBtn.addEventListener("click", () => openGuide());
+    closeGuideBtn.addEventListener("click", () => closeGuide());
+    guideOverlay.addEventListener("click", (e) => {
+      if (e.target === guideOverlay) closeGuide();
+    });
     pauseBtn.addEventListener("click", togglePause);
     restartBtn.addEventListener("click", () => restartImmediate());
 
