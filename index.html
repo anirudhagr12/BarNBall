@@ -11,10 +11,15 @@
     :root {
       --hud-pad: 12px;
       --hud-font: 14px;
-      --btn-h: 44px;
-      --btn-w: 56px;
+      --btn-h: 48px;
+      --btn-w: 48px;
+      --help-size: 36px;
       --radius: 10px;
       --panel-gap: 8px;
+      --top-zone-h: 8vh;
+      --bottom-zone-h: 18vh;
+      --modal-w: 88vw;
+      --modal-h: 70vh;
       --warm: #FFF5E4;
     }
 
@@ -28,7 +33,7 @@
       touch-action: none;
       background: #0a0e2e;
       color: var(--warm);
-      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      font-family: system-ui, "Arial Rounded MT Bold", "Segoe UI", sans-serif;
       user-select: none;
     }
 
@@ -60,6 +65,7 @@
       gap: var(--panel-gap);
       pointer-events: none;
       z-index: 6;
+      min-height: var(--top-zone-h);
     }
 
     .panel {
@@ -78,7 +84,7 @@
       padding: calc(var(--hud-font) * 0.6) calc(var(--hud-font) * 0.7);
       font-size: var(--hud-font);
       text-shadow: 0 0 5px rgba(255, 210, 120, 0.35);
-      max-width: 72vw;
+      max-width: 78vw;
     }
 
     #lives { color: #FF7EA8; letter-spacing: 1px; }
@@ -93,8 +99,8 @@
     }
 
     .btn {
-      min-width: var(--btn-w);
-      min-height: var(--btn-h);
+      min-width: max(var(--btn-w), 48px);
+      min-height: max(var(--btn-h), 48px);
       padding: 0 calc(var(--btn-w) * 0.18);
       border-radius: var(--radius);
       border: 1px solid rgba(0, 190, 255, 0.45);
@@ -107,6 +113,21 @@
     }
 
     .btn:active { transform: scale(0.98); }
+
+    #helpBtn {
+      position: absolute;
+      right: var(--hud-pad);
+      top: calc(env(safe-area-inset-top, 0px) + var(--hud-pad));
+      width: max(var(--help-size), 36px);
+      height: max(var(--help-size), 36px);
+      min-width: 48px;
+      min-height: 48px;
+      border-radius: 999px;
+      z-index: 7;
+      pointer-events: auto;
+      padding: 0;
+      font-size: calc(var(--hud-font) * 1.1);
+    }
 
     #overlay {
       position: absolute;
@@ -141,6 +162,7 @@
       padding: calc(var(--hud-font) * 0.9);
       max-width: 620px;
       margin: 0 auto;
+      min-height: min(var(--modal-h), 84vh);
     }
 
     #guidePanel h2 {
@@ -174,10 +196,31 @@
       margin-bottom: calc(var(--hud-font) * 0.5);
     }
 
+    #closeGuideBtn {
+      position: sticky;
+      top: 0;
+      margin-left: auto;
+      min-width: 48px;
+      min-height: 48px;
+      z-index: 2;
+    }
+
+    .powerCard {
+      border: 1px solid rgba(0, 170, 255, 0.32);
+      border-radius: var(--radius);
+      background: rgba(10, 24, 60, 0.9);
+      padding: calc(var(--hud-font) * 0.5);
+      margin-bottom: calc(var(--hud-font) * 0.42);
+      font-size: calc(var(--hud-font) * 0.9);
+      line-height: 1.3;
+    }
+
     #modal {
-      width: min(94vw, 480px);
+      width: min(var(--modal-w), 96vw);
+      max-height: var(--modal-h);
       text-align: center;
       padding: calc(var(--hud-font) * 1.2);
+      overflow: auto;
     }
 
     #modal h1 {
@@ -259,6 +302,43 @@
       100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06); }
     }
 
+    #vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.45);
+    }
+
+    #levelIntro {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      transform: translate(-50%, -120%);
+      width: min(86vw, 560px);
+      z-index: 11;
+      pointer-events: none;
+      text-align: center;
+      padding: calc(var(--hud-font) * 0.75);
+      border-radius: var(--radius);
+      border: 1px solid rgba(0, 170, 255, 0.45);
+      background: rgba(6, 18, 48, 0.94);
+      color: #e5f6ff;
+      opacity: 0;
+      white-space: pre-line;
+    }
+
+    #levelIntro.show {
+      animation: introSlide 2.35s ease forwards;
+    }
+
+    @keyframes introSlide {
+      0% { transform: translate(-50%, -120%); opacity: 0; }
+      14% { transform: translate(-50%, calc(env(safe-area-inset-top, 0px) + var(--hud-pad))); opacity: 1; }
+      84% { transform: translate(-50%, calc(env(safe-area-inset-top, 0px) + var(--hud-pad))); opacity: 1; }
+      100% { transform: translate(-50%, -120%); opacity: 0; }
+    }
+
     @media (max-width: 460px) {
       #hud {
         align-items: stretch;
@@ -267,7 +347,8 @@
         max-width: 100%;
       }
       #btns {
-        width: 100%;
+        width: calc(100% - max(var(--help-size), 36px) - var(--hud-pad) - var(--panel-gap));
+        margin-right: calc(max(var(--help-size), 36px) + var(--panel-gap));
       }
       .btn {
         flex: 1 1 auto;
@@ -286,8 +367,8 @@
         <div id="lives">❤❤❤</div>
         <div id="hi">Hi: 0</div>
       </div>
+      <button id="helpBtn" class="btn">?</button>
       <div id="btns">
-        <button id="helpBtn" class="btn">Help</button>
         <button id="muteBtn" class="btn">Mute</button>
         <button id="pauseBtn" class="btn">Pause</button>
         <button id="restartBtn" class="btn">Restart</button>
@@ -296,6 +377,8 @@
 
     <div id="toast"></div>
     <div id="splash"></div>
+    <div id="levelIntro"></div>
+    <div id="vignette"></div>
 
     <div id="overlay">
       <div id="modal" class="panel">
@@ -309,20 +392,24 @@
       <div id="guidePanel">
         <div class="guideTop">
           <h2>How To Play</h2>
-          <button id="closeGuideBtn" class="btn">Close</button>
+          <button id="closeGuideBtn" class="btn">✕ Close</button>
         </div>
-        <h3>Controls</h3>
+        <h3>🕹️ Controls</h3>
         <p>Drag anywhere to move the paddle. Tap to launch, fire lasers, or release sticky balls.</p>
-        <h3>Core Goal</h3>
-        <p>Break all non-cursed bricks to clear a level. Keep the ball above the lose zone.</p>
-        <h3>Power-Ups</h3>
-        <ul>
-          <li>🎱 Chaos Mode: exactly 3 balls</li>
-          <li>🍯 Glue Trap: next paddle hit sticks a ball; tap launches one-by-one</li>
-          <li>🛡️ Safety Net: protects bottom hits for current active ball count</li>
-          <li>💣 The Nuke: next brick hit explodes nearby bricks once</li>
-        </ul>
-        <h3>Tips</h3>
+        <h3>🧱 Brick Types</h3>
+        <p>Glass (1), Stone (2), Obsidian (3), Titanium (4), Cursed (unbreakable). Clear all non-cursed bricks to win.</p>
+        <h3>⚡ Power-Ups</h3>
+        <div class="powerCard">🎱 Chaos Mode — Splits play into exactly three active balls.</div>
+        <div class="powerCard">➡️ Thicc Stick — Paddle grows wider for easier catches.</div>
+        <div class="powerCard">✏️ Pencil Mode — Paddle shrinks, higher precision required.</div>
+        <div class="powerCard">🔥 Napalm — Ball passes through and one-shots breakable bricks.</div>
+        <div class="powerCard">🔫 Pew Pew — Tap to fire dual lasers for a short window.</div>
+        <div class="powerCard">❤️ One More Go — Adds one extra life instantly.</div>
+        <div class="powerCard">🧊 Chill Pill — Reduces active ball speed temporarily.</div>
+        <div class="powerCard">🍯 Glue Trap — Next paddle hit sticks a ball until tap launch.</div>
+        <div class="powerCard">🛡️ Safety Net — Bottom shield absorbs drops using visible charges.</div>
+        <div class="powerCard">💣 The Nuke — Next brick hit detonates a 3x3 blast.</div>
+        <h3>💡 Tips</h3>
         <ul>
           <li>Use the cyan drag rail above the paddle as your thumb anchor.</li>
           <li>Prioritize Titanium lanes last, clear Glass/Stone first for control.</li>
@@ -393,6 +480,7 @@
 
     const toastEl = document.getElementById("toast");
     const splashEl = document.getElementById("splash");
+    const levelIntroEl = document.getElementById("levelIntro");
     const rotateOverlay = document.getElementById("rotateOverlay");
 
     // -----------------------------
@@ -450,10 +538,16 @@
       brickPadX: 18,
       brickGap: 4,
       topY: 84,
+      topZoneH: 50,
+      middleY: 50,
+      middleH: 400,
+      bottomZoneH: 120,
+      loseY: 620,
       hudFont: 14,
       hudPad: 10,
       btnH: 42,
       btnW: 56,
+      helpSize: 36,
       hudH: 60,
       baseSpeed: 300,
       speedRamp: 2.8
@@ -495,11 +589,18 @@
         bombArmed: false,
         shieldCharges: 0,
         shieldMaxCharges: 0,
+        shieldWarningTime: 0,
         sizeMode: null,
         sizeOriginalW: 0
       },
+      levelLayout: { rows: 0, cols: 0 },
       paddle: { x: 120, y: 560, w: 70, h: 14 },
       lastPaddleSpriteW: 0,
+      inputActive: false,
+      hintTimer: 0,
+      hintAlpha: 0,
+      hintPhase: 0,
+      dragRipple: 0,
       assets: {
         bg: null,
         ball: null,
@@ -560,6 +661,10 @@
         tone("sawtooth", 250, 120, 0.34, 0.11, 0.2);
       };
       A.laser = () => tone("square", 1200, 830, 0.05, 0.07);
+      A.shieldBreak = () => {
+        tone("triangle", 860, 420, 0.09, 0.09, 0);
+        tone("triangle", 500, 180, 0.12, 0.08, 0.08);
+      };
       return A;
     })();
 
@@ -576,22 +681,33 @@
       root.style.setProperty("--hud-font", `${metrics.hudFont}px`);
       root.style.setProperty("--btn-h", `${metrics.btnH}px`);
       root.style.setProperty("--btn-w", `${metrics.btnW}px`);
+      root.style.setProperty("--help-size", `${metrics.helpSize}px`);
       root.style.setProperty("--radius", `${Math.max(6, Math.round(W * 0.018))}px`);
       root.style.setProperty("--panel-gap", `${Math.max(5, Math.round(W * 0.02))}px`);
+      root.style.setProperty("--top-zone-h", `${metrics.topZoneH}px`);
+      root.style.setProperty("--bottom-zone-h", `${metrics.bottomZoneH}px`);
+      root.style.setProperty("--modal-w", `${W * 0.88}px`);
+      root.style.setProperty("--modal-h", `${H * 0.7}px`);
     }
 
     function computeMetrics() {
       metrics.paddleW = W * 0.18;
-      metrics.paddleH = Math.max(H * 0.022, W * 0.018);
+      metrics.paddleH = H * 0.022;
       metrics.ballR = W * 0.015;
       metrics.brickPadX = W * 0.05;
-      metrics.brickGap = Math.max(2, W * 0.008);
-      metrics.hudFont = Math.max(11, W * 0.034);
-      metrics.hudPad = Math.max(8, W * 0.022);
-      metrics.btnH = Math.max(36, H * 0.062);
-      metrics.btnW = Math.max(48, W * 0.12);
-      metrics.hudH = metrics.hudPad * 2 + metrics.btnH;
-      metrics.topY = metrics.hudH + H * 0.03;
+      metrics.brickGap = W * 0.004;
+      metrics.hudFont = W * 0.034;
+      metrics.hudPad = W * 0.022;
+      metrics.btnH = H * 0.062;
+      metrics.btnW = W * 0.12;
+      metrics.helpSize = W * 0.06;
+      metrics.topZoneH = Math.max(H * 0.08, metrics.btnH + metrics.hudPad * 1.45);
+      metrics.bottomZoneH = H * 0.18;
+      metrics.middleY = metrics.topZoneH;
+      metrics.middleH = H - metrics.topZoneH - metrics.bottomZoneH;
+      metrics.hudH = metrics.topZoneH;
+      metrics.topY = metrics.middleY + metrics.middleH * 0.06;
+      metrics.loseY = H * 0.97;
       metrics.baseSpeed = W * 0.95;
       metrics.speedRamp = W * 0.009;
     }
@@ -680,6 +796,18 @@
       cctx.fillStyle = "rgba(255,255,255,0.3)";
       cctx.fillRect(0, height * 0.2, Math.max(2, width * 0.03), height * 0.6);
       cctx.fillRect(width - Math.max(2, width * 0.03), height * 0.2, Math.max(2, width * 0.03), height * 0.6);
+      cctx.strokeStyle = "rgba(210,245,255,0.6)";
+      cctx.lineWidth = Math.max(1, width * 0.015);
+      const gx = width * 0.5;
+      const gh = height * 0.52;
+      const gy0 = height * 0.24;
+      const sep = Math.max(3, width * 0.03);
+      for (let i = -1; i <= 1; i++) {
+        cctx.beginPath();
+        cctx.moveTo(gx + i * sep, gy0);
+        cctx.lineTo(gx + i * sep, gy0 + gh);
+        cctx.stroke();
+      }
       cctx.strokeStyle = "#ffffff";
       cctx.lineWidth = Math.max(1, width * 0.012);
       roundRectPath(cctx, cctx.lineWidth * 0.5, cctx.lineWidth * 0.5, width - cctx.lineWidth, height - cctx.lineWidth, Math.max(2, height * 0.35));
@@ -741,6 +869,8 @@
     }
 
     function resize() {
+      const oldW = W;
+      const oldH = H;
       W = window.innerWidth;
       H = window.innerHeight;
       computeMetrics();
@@ -752,19 +882,30 @@
       canvas.style.height = `${H}px`;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-      game.paddle.w = metrics.paddleW;
+      const rx = oldW > 0 ? W / oldW : 1;
+      const ry = oldH > 0 ? H / oldH : 1;
+      game.paddle.w = game.paddle.w * rx || metrics.paddleW;
       game.paddle.h = metrics.paddleH;
-      game.paddle.y = H - game.paddle.h - H * 0.036;
-      game.paddle.x = clamp(game.paddle.x, 0, W - game.paddle.w);
+      game.paddle.y = H * 0.78;
+      game.paddle.x = clamp((game.paddle.x || W * 0.5) * rx, 0, W - game.paddle.w);
 
       buildStaticBackground();
       buildBallSprite();
       buildPaddleSprite(game.paddle.w, game.paddle.h);
 
-      if (game.bricks.length) {
-        const any = game.bricks[0];
-        buildBrickAssets(any.w, any.h);
-      }
+      if (game.bricks.length) relayoutBricks();
+      game.balls.forEach((b) => {
+        b.x *= rx;
+        b.y *= ry;
+        b.r = metrics.ballR;
+      });
+      game.powerups.forEach((p) => {
+        p.x *= rx;
+        p.y *= ry;
+        p.w = W * 0.18;
+        p.h = H * 0.032;
+        p.vy = H * 0.18;
+      });
 
       handleOrientation();
     }
@@ -773,10 +914,11 @@
     // Overlay / UI
     // -----------------------------
     function showSplash(text) {
-      splashEl.textContent = text;
-      splashEl.classList.remove("splash-animate");
-      void splashEl.offsetWidth;
-      splashEl.classList.add("splash-animate");
+      splashEl.textContent = "";
+      levelIntroEl.textContent = text;
+      levelIntroEl.classList.remove("show");
+      void levelIntroEl.offsetWidth;
+      levelIntroEl.classList.add("show");
     }
 
     function showToast(text) {
@@ -924,6 +1066,29 @@
       return "Glass";
     }
 
+    function relayoutBricks() {
+      if (!game.bricks.length) return;
+      const cols = game.levelLayout.cols || Math.max(...game.bricks.map((b) => b.col || 0)) + 1;
+      const rows = game.levelLayout.rows || Math.max(...game.bricks.map((b) => b.row || 0)) + 1;
+      const gap = metrics.brickGap;
+      const padX = metrics.brickPadX;
+      const usableW = W - padX * 2 - gap * (cols - 1);
+      const brickW = usableW / cols;
+      const gridTop = metrics.middleY + metrics.middleH * 0.06;
+      const gridH = metrics.middleH * 0.58;
+      const brickH = (gridH - gap * (rows - 1)) / rows;
+      for (const b of game.bricks) {
+        const c = b.col || 0;
+        const r = b.row || 0;
+        b.w = brickW;
+        b.h = brickH;
+        b.x = padX + c * (brickW + gap);
+        b.baseX = b.x;
+        b.y = gridTop + r * (brickH + gap);
+      }
+      buildBrickAssets(brickW, brickH);
+    }
+
     function buildLevel(level) {
       game.bricks.length = 0;
       const rows = clamp(4 + Math.floor(level * 0.5), 4, 8);
@@ -932,11 +1097,14 @@
       const padX = metrics.brickPadX; // 5% each side
       const usableW = W - padX * 2 - gap * (cols - 1);
       const brickW = usableW / cols;
-      const brickH = H * 0.038;
-      const topY = metrics.topY;
+      const gridTop = metrics.middleY + metrics.middleH * 0.06;
+      const gridH = metrics.middleH * 0.58;
+      const brickH = (gridH - gap * (rows - 1)) / rows;
 
       const cursedTarget = level >= 5 ? Math.min(Math.floor(level - 4), Math.floor(rows * cols * 0.17)) : 0;
       let cursedPlaced = 0;
+      game.levelLayout.rows = rows;
+      game.levelLayout.cols = cols;
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -954,14 +1122,17 @@
           const drifting = level >= 7 && type !== "Cursed" && Math.random() < (0.14 + Math.min(0.2, (level - 7) * 0.03));
 
           const x = padX + c * (brickW + gap);
-          const y = topY + r * (brickH + gap);
+          const y = gridTop + r * (brickH + gap);
           const hp = BRICKS[type].hp;
           game.bricks.push({
             x, y, baseX: x, w: brickW, h: brickH,
+            row: r, col: c,
             type,
             hp,
             maxHp: hp,
             alive: true,
+            hitPulse: 0,
+            glowFlash: 0,
             driftAmp: drifting ? rand(W * 0.01, W * 0.03) : 0,
             driftSpeed: drifting ? rand(0.7, 1.4) : 0,
             driftPhase: rand(0, Math.PI * 2)
@@ -1018,11 +1189,14 @@
 
       game.paddle.w = metrics.paddleW;
       game.paddle.h = metrics.paddleH;
-      game.paddle.y = H - game.paddle.h - H * 0.036;
+      game.paddle.y = H * 0.78;
       game.paddle.x = clamp(game.paddle.x, 0, W - game.paddle.w);
       buildPaddleSprite(game.paddle.w, game.paddle.h);
 
       spawnBall(true);
+      game.hintTimer = 2;
+      game.hintAlpha = 1;
+      game.hintPhase = 0;
       game.state = "ready";
       game.nextSpeedTick = 5.5;
       updateHUD();
@@ -1074,7 +1248,7 @@
 
       game.paddle.w = data.paddle?.w || metrics.paddleW;
       game.paddle.h = metrics.paddleH;
-      game.paddle.y = H - game.paddle.h - H * 0.036;
+      game.paddle.y = H * 0.78;
       game.paddle.x = clamp(data.paddle?.x || W * 0.5, 0, W - game.paddle.w);
       if (game.bricks.length) buildBrickAssets(game.bricks[0].w, game.bricks[0].h);
       buildPaddleSprite(game.paddle.w, game.paddle.h);
@@ -1117,6 +1291,8 @@
       Audio.brickHit(1);
       if (guideOpen()) return;
       if (game.paused) return;
+      game.hintTimer = 0;
+      game.hintAlpha = 0;
       if (game.balls.some((b) => b.stuck)) {
         if (game.state === "ready") game.state = "playing";
         launchOneStuckBall();
@@ -1162,6 +1338,7 @@
       game.powerState.bombArmed = false;
       game.powerState.sizeMode = null;
       game.powerState.sizeOriginalW = 0;
+      game.powerState.shieldWarningTime = 0;
     }
 
     function resetForLifeLoss() {
@@ -1169,6 +1346,7 @@
       game.shieldActive = false;
       game.powerState.shieldCharges = 0;
       game.powerState.shieldMaxCharges = 0;
+      game.powerState.shieldWarningTime = 0;
       game.nextSpeedTick = 5.5;
       game.powerups.length = 0;
       game.lasers.length = 0;
@@ -1298,6 +1476,7 @@
         game.shieldActive = true;
         game.powerState.shieldMaxCharges = nonStuckBallCount();
         game.powerState.shieldCharges = game.powerState.shieldMaxCharges;
+        game.powerState.shieldWarningTime = 0;
       }
       if (type === "bomb") {
         game.powerState.bombArmed = true;
@@ -1367,12 +1546,19 @@
         addPopup(source.x, source.y, `+${pts}`);
         spawnExplosion(brick.x + brick.w * 0.5, brick.y + brick.h * 0.5, def.particle, brick.type === "Titanium" ? 10 : 7);
         maybeDropPowerup(brick.x + brick.w * 0.5, brick.y + brick.h * 0.5);
+        for (const nb of game.bricks) {
+          if (!nb.alive || nb === brick) continue;
+          const dx = Math.abs((nb.x + nb.w * 0.5) - (brick.x + brick.w * 0.5));
+          const dy = Math.abs((nb.y + nb.h * 0.5) - (brick.y + brick.h * 0.5));
+          if (dx <= brick.w * 1.2 && dy <= brick.h * 1.2) nb.glowFlash = 0.016;
+        }
         bumpCombo();
       } else {
         const pts = 50 * game.comboMulti;
         game.score += pts;
         addPopup(source.x, source.y, `+${pts}`, "#c5e4ff");
         spawnExplosion(source.x, source.y, def.particle, 5);
+        brick.hitPulse = 0.08;
       }
 
       Audio.brickHit(def.pitch);
@@ -1401,16 +1587,9 @@
             onClick: () => {
               game.level++;
               loadLevel(game.level, true);
-              showOverlay(`Level ${game.level} — ${LEVEL_NAMES[(game.level - 1) % LEVEL_NAMES.length]}`, `${LEVEL_TAUNTS[(game.level - 1) % LEVEL_TAUNTS.length]}<br>Think you can handle this?`, [
-                {
-                  label: "Continue",
-                  onClick: () => {
-                    hideOverlay();
-                    game.paused = false;
-                    saveGame();
-                  }
-                }
-              ]);
+              hideOverlay();
+              game.paused = false;
+              saveGame();
             }
           }
         ]);
@@ -1461,6 +1640,9 @@
       resetForLifeLoss();
       game.balls.length = 0;
       spawnBall(true);
+      game.hintTimer = 2;
+      game.hintAlpha = 1;
+      game.hintPhase = 0;
       game.state = "ready";
       game.comboHits = 0;
       game.comboMulti = 1;
@@ -1640,10 +1822,27 @@
           if (game.shieldActive && game.powerState.shieldCharges > 0) {
             game.powerState.shieldCharges--;
             if (game.powerState.shieldCharges <= 0) {
+              const sy = metrics.loseY;
+              for (let i = 0; i < 16; i++) {
+                pushParticle({
+                  x: (W * i) / 15,
+                  y: sy,
+                  vx: rand(-W * 0.12, W * 0.12),
+                  vy: rand(-H * 0.2, -H * 0.05),
+                  life: rand(0.2, 0.45),
+                  t: 0,
+                  color: "#00ffcc",
+                  s: rand(W * 0.003, W * 0.008)
+                });
+              }
+              Audio.shieldBreak();
               game.shieldActive = false;
               game.powerState.shieldMaxCharges = 0;
+              game.powerState.shieldWarningTime = 0;
+            } else if (game.powerState.shieldCharges === 1) {
+              game.powerState.shieldWarningTime = 0.45;
             }
-            b.y = H - H * 0.04;
+            b.y = metrics.loseY - H * 0.02;
             b.vy = -Math.abs(b.vy);
             showToast("🛡️ Safety Net saved you!");
             saveGame();
@@ -1715,6 +1914,22 @@
     }
 
     function updateFX(dt) {
+      if (game.hintTimer > 0) {
+        game.hintTimer -= dt;
+        game.hintPhase += dt * 2.4;
+        game.hintAlpha = clamp(game.hintTimer / 2, 0, 1);
+      } else {
+        game.hintAlpha = 0;
+      }
+
+      game.dragRipple = Math.max(0, game.dragRipple - dt * 1.4);
+      if (game.powerState.shieldWarningTime > 0) game.powerState.shieldWarningTime -= dt;
+
+      for (const b of game.bricks) {
+        if (b.hitPulse > 0) b.hitPulse -= dt;
+        if (b.glowFlash > 0) b.glowFlash -= dt;
+      }
+
       for (const p of game.particles) {
         p.t += dt;
         p.x += p.vx * dt;
@@ -1751,20 +1966,39 @@
 
     function renderBricks() {
       const pulseOn = ((performance.now() / 300) | 0) % 2 === 0;
+      const t = performance.now() * 0.001;
       for (const b of game.bricks) {
         if (!b.alive) continue;
         const sprite = game.assets.brickSprites[b.type];
-        ctx.drawImage(sprite, b.x, b.y, b.w, b.h);
+        let drawX = b.x;
+        let drawY = b.y;
+        let drawW = b.w;
+        let drawH = b.h;
+        if (b.hitPulse > 0) {
+          const p = b.hitPulse / 0.08;
+          const s = 1 + (1 - p) * 0.08;
+          drawW = b.w * s;
+          drawH = b.h * s;
+          drawX = b.x + (b.w - drawW) * 0.5;
+          drawY = b.y + (b.h - drawH) * 0.5;
+        }
+        ctx.drawImage(sprite, drawX, drawY, drawW, drawH);
+        ctx.strokeStyle = "rgba(5,12,30,0.95)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(drawX + 0.5, drawY + 0.5, drawW - 1, drawH - 1);
 
         if (b.type === "Cursed") {
+          const mix = 0.3 + ((Math.sin(t * 1.6 + b.row * 0.7 + b.col * 0.9) + 1) * 0.2);
+          ctx.fillStyle = `rgba(0,90,150,${mix})`;
+          ctx.fillRect(drawX, drawY, drawW, drawH);
           ctx.strokeStyle = pulseOn ? "rgba(0,210,255,0.85)" : "rgba(0,210,255,0.42)";
           ctx.lineWidth = Math.max(1, W * 0.004);
-          ctx.strokeRect(b.x, b.y, b.w, b.h);
+          ctx.strokeRect(drawX, drawY, drawW, drawH);
         }
 
         if (b.hp < b.maxHp && b.maxHp > 1) {
           const stage = clamp((b.maxHp - b.hp) - 1, 0, 2);
-          ctx.drawImage(game.assets.cracks[stage], b.x, b.y, b.w, b.h);
+          ctx.drawImage(game.assets.cracks[stage], drawX, drawY, drawW, drawH);
         }
 
         if (b.maxHp > 1 && b.type !== "Cursed") {
@@ -1785,13 +2019,32 @@
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.font = `bold ${Math.max(10, W * 0.03)}px Trebuchet MS, sans-serif`;
-          ctx.fillText(icon, b.x + b.w * 0.5, b.y + b.h * 0.56);
+          ctx.fillText(icon, drawX + drawW * 0.5, drawY + drawH * 0.56);
+        }
+
+        if (b.glowFlash > 0) {
+          ctx.fillStyle = `rgba(210,240,255,${Math.min(0.28, b.glowFlash * 6)})`;
+          ctx.fillRect(drawX, drawY, drawW, drawH);
         }
       }
     }
 
     function renderPaddle() {
+      const shadowW = game.paddle.w * 0.92;
+      const shadowH = Math.max(4, H * 0.012);
+      const shadowX = game.paddle.x + (game.paddle.w - shadowW) * 0.5;
+      const shadowY = game.paddle.y + game.paddle.h + H * 0.008;
+      ctx.fillStyle = "rgba(20,120,220,0.22)";
+      roundRectPath(ctx, shadowX, shadowY, shadowW, shadowH, shadowH * 0.5);
+      ctx.fill();
+
       ctx.drawImage(game.assets.paddle, game.paddle.x, game.paddle.y, game.paddle.w, game.paddle.h);
+
+      if (game.dragRipple > 0) {
+        ctx.fillStyle = `rgba(210,245,255,${0.15 + game.dragRipple * 0.22})`;
+        roundRectPath(ctx, game.paddle.x, game.paddle.y, game.paddle.w, game.paddle.h, game.paddle.h * 0.5);
+        ctx.fill();
+      }
 
       // Drag rail: gives finger-placement intuition.
       const railW = Math.max(game.paddle.w * 0.65, W * 0.26);
@@ -1813,21 +2066,50 @@
       ctx.fillText("↔ DRAG", railX + railW * 0.5, railY + railH * 0.53);
 
       if (game.shieldActive) {
-        const y = H - H * 0.02;
-        const h = Math.max(4, H * 0.012);
-        const pulse = 0.35 + ((Math.sin(performance.now() * 0.012) + 1) * 0.2);
-        ctx.fillStyle = `rgba(60,210,255,${pulse})`;
-        ctx.fillRect(W * 0.02, y - h * 0.5, W * 0.96, h);
-        ctx.strokeStyle = "rgba(170,240,255,0.95)";
-        ctx.lineWidth = Math.max(2, W * 0.005);
+        const y = metrics.loseY;
+        const h = Math.max(4, H * 0.0045);
+        const pulse = 0.35 + ((Math.sin(performance.now() * 0.007) + 1) * 0.2);
+        const warning = game.powerState.shieldWarningTime;
+        let warn = false;
+        if (warning > 0) {
+          const elapsed = 0.45 - warning;
+          const step = Math.floor(elapsed / 0.075);
+          warn = step % 2 === 0;
+        }
+        const barColor = warn ? "rgba(255,80,80,0.92)" : `rgba(0,255,204,${pulse + 0.2})`;
+        ctx.fillStyle = withAlpha("#00ffcc", 0.2);
+        ctx.fillRect(0, y - h * 2, W, h * 4);
+        ctx.fillStyle = barColor;
+        ctx.fillRect(0, y - h * 0.5, W, h);
+        const shimmerX = (performance.now() * 0.16) % (W + W * 0.2) - W * 0.2;
+        ctx.fillStyle = "rgba(220,255,250,0.35)";
+        ctx.fillRect(shimmerX, y - h * 0.9, W * 0.16, h * 1.8);
+        ctx.strokeStyle = warn ? "rgba(255,150,150,0.95)" : "rgba(180,255,235,0.95)";
+        ctx.lineWidth = Math.max(2, W * 0.004);
         ctx.beginPath();
-        ctx.moveTo(W * 0.03, y);
-        ctx.lineTo(W * 0.97, y);
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
         ctx.stroke();
-        ctx.fillStyle = "rgba(220,245,255,0.95)";
-        ctx.font = `bold ${Math.max(10, W * 0.026)}px Trebuchet MS, sans-serif`;
+        const labelPulse = 0.55 + ((Math.sin(performance.now() * 0.01) + 1) * 0.2);
+        ctx.fillStyle = warn ? `rgba(255,180,180,${labelPulse})` : `rgba(0,255,204,${labelPulse})`;
+        ctx.font = `bold ${Math.max(10, W * 0.026)}px system-ui, sans-serif`;
         ctx.textAlign = "center";
-        ctx.fillText(`SAFETY NET x${Math.max(1, game.powerState.shieldCharges)}`, W * 0.5, y - h * 1.2);
+        ctx.fillText(`SHIELD ACTIVE x${Math.max(1, game.powerState.shieldCharges)}`, W * 0.5, y - h * 2.1);
+      }
+
+      if (game.hintAlpha > 0 && game.state === "ready") {
+        const hx = game.paddle.x + game.paddle.w * 0.5 + Math.sin(game.hintPhase * Math.PI) * (game.paddle.w * 0.35);
+        const hy = game.paddle.y - H * 0.045;
+        const s = Math.max(10, W * 0.026);
+        ctx.fillStyle = `rgba(225,245,255,${game.hintAlpha * 0.85})`;
+        ctx.beginPath();
+        ctx.arc(hx, hy, s * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(hx - s * 0.22, hy - s * 0.2, s * 0.44, s * 1.08);
+        ctx.fillStyle = `rgba(160,225,255,${game.hintAlpha * 0.75})`;
+        ctx.font = `bold ${Math.max(9, W * 0.024)}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText("DRAG", hx, hy - s * 1.2);
       }
     }
 
@@ -1916,8 +2198,8 @@
       if (game.shieldActive) entries.push({ type: "shield", t: game.powerState.shieldCharges, max: Math.max(1, game.powerState.shieldMaxCharges) });
       if (!entries.length) return;
 
-      const boxW = W * 0.14;
-      const boxH = H * 0.038;
+      const boxW = W * 0.17;
+      const boxH = H * 0.055;
       const gap = W * 0.012;
       const total = entries.length * boxW + (entries.length - 1) * gap;
       let x = clamp(game.paddle.x + game.paddle.w * 0.5 - total * 0.5, W * 0.02, W - total - W * 0.02);
@@ -1932,16 +2214,16 @@
         ctx.strokeRect(x, y, boxW, boxH);
 
         ctx.fillStyle = d.color;
-        ctx.font = `bold ${Math.max(9, W * 0.025)}px Trebuchet MS, sans-serif`;
+        ctx.font = `bold ${Math.max(28, W * 0.04)}px system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(d.emoji, x + boxW * 0.2, y + boxH * 0.48);
+        ctx.fillText(d.emoji, x + boxW * 0.24, y + boxH * 0.45);
 
         const ratio = clamp(e.t / e.max, 0, 1);
         ctx.fillStyle = "rgba(255,255,255,0.2)";
-        ctx.fillRect(x + boxW * 0.08, y + boxH * 0.74, boxW * 0.84, Math.max(2, H * 0.004));
+        ctx.fillRect(x + boxW * 0.08, y + boxH * 0.8, boxW * 0.84, H * 0.004);
         ctx.fillStyle = d.color;
-        ctx.fillRect(x + boxW * 0.08, y + boxH * 0.74, boxW * 0.84 * ratio, Math.max(2, H * 0.004));
+        ctx.fillRect(x + boxW * 0.08, y + boxH * 0.8, boxW * 0.84 * ratio, H * 0.004);
 
         x += boxW + gap;
       }
@@ -2007,14 +2289,20 @@
     window.addEventListener("resize", resize, { passive: true });
 
     canvas.addEventListener("mousedown", (e) => {
+      game.inputActive = true;
       setPointer(e.clientX);
       onPress();
     });
 
-    window.addEventListener("mousemove", (e) => setPointer(e.clientX), { passive: true });
+    window.addEventListener("mousemove", (e) => {
+      setPointer(e.clientX);
+      if (game.inputActive) game.dragRipple = Math.min(1, game.dragRipple + 0.15);
+    }, { passive: true });
+    window.addEventListener("mouseup", () => { game.inputActive = false; }, { passive: true });
 
     canvas.addEventListener("touchstart", (e) => {
       e.preventDefault();
+      game.inputActive = true;
       const t = e.changedTouches[0];
       setPointer(t.clientX);
       onPress();
@@ -2024,7 +2312,10 @@
       e.preventDefault();
       const t = e.changedTouches[0];
       setPointer(t.clientX);
+      game.dragRipple = Math.min(1, game.dragRipple + 0.12);
     }, { passive: false });
+    canvas.addEventListener("touchend", () => { game.inputActive = false; }, { passive: true });
+    canvas.addEventListener("touchcancel", () => { game.inputActive = false; }, { passive: true });
 
     document.addEventListener("gesturestart", (e) => e.preventDefault());
     document.addEventListener("dblclick", (e) => e.preventDefault());
