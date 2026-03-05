@@ -54,25 +54,40 @@
       left: 0;
       top: env(safe-area-inset-top, 0);
       width: 100%;
-      height: var(--top-zone-h);
       padding: var(--hud-pad);
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      align-items: center;
+      display: flex;
+      flex-direction: column;
+      gap: 1vh;
       pointer-events: none;
       z-index: 6;
       color: #E3F2FD;
       font-weight: 700;
       font-size: var(--hud-font);
       line-height: 1;
+      background: rgba(13, 27, 42, 0.55);
+    }
+
+    #hudTop {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      align-items: center;
+      gap: 2vw;
     }
 
     #score { justify-self: start; }
     #level { justify-self: center; }
     #lives { justify-self: end; }
 
+    #controlsRow {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2vw;
+      pointer-events: auto;
+    }
+
     .btn {
-      position: absolute;
       min-width: var(--btn-w);
       min-height: var(--btn-h);
       border-radius: var(--btn-radius);
@@ -87,19 +102,23 @@
       pointer-events: auto;
     }
 
-    #muteBtn { left: var(--hud-pad); top: calc(env(safe-area-inset-top, 0) + var(--top-zone-h)); }
-    #pauseBtn { left: calc(var(--hud-pad) + var(--btn-w) + 1.2vw); top: calc(env(safe-area-inset-top, 0) + var(--top-zone-h)); }
-    #restartBtn { right: calc(var(--hud-pad) + var(--btn-w) + 1.2vw); top: calc(env(safe-area-inset-top, 0) + var(--top-zone-h)); }
+    #muteBtn, #pauseBtn, #restartBtn {
+      position: static;
+      width: 100%;
+      height: var(--btn-h);
+    }
+
     #helpBtn {
-      right: var(--hud-pad);
-      top: calc(env(safe-area-inset-top, 0) + var(--hud-pad));
+      position: static;
       width: var(--help-size);
       height: var(--help-size);
-      min-width: var(--btn-h);
-      min-height: var(--btn-h);
+      min-width: var(--help-size);
+      min-height: var(--help-size);
       border-radius: 50%;
       padding: 0;
-      font-size: calc(var(--hud-font) * 0.95);
+      font-size: calc(var(--hud-font) * 0.82);
+      justify-self: end;
+      pointer-events: auto;
     }
 
     #overlay {
@@ -233,15 +252,18 @@
     <canvas id="gameCanvas"></canvas>
 
     <div id="hudBar">
-      <div id="score">Score: 0</div>
-      <div id="level">Level: 1</div>
-      <div id="lives">❤❤❤</div>
+      <div id="hudTop">
+        <div id="score">Score: 0</div>
+        <div id="level">Level: 1</div>
+        <div id="lives">❤❤❤</div>
+        <button id="helpBtn" class="btn">?</button>
+      </div>
+      <div id="controlsRow">
+        <button id="muteBtn" class="btn">Mute</button>
+        <button id="pauseBtn" class="btn">Pause</button>
+        <button id="restartBtn" class="btn">Restart</button>
+      </div>
     </div>
-
-    <button id="helpBtn" class="btn">?</button>
-    <button id="muteBtn" class="btn">Mute</button>
-    <button id="pauseBtn" class="btn">Pause</button>
-    <button id="restartBtn" class="btn">Restart</button>
 
     <div id="toast"></div>
 
@@ -309,6 +331,7 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
+    const hudBar = document.getElementById("hudBar");
     const scoreEl = document.getElementById("score");
     const levelEl = document.getElementById("level");
     const livesEl = document.getElementById("lives");
@@ -480,11 +503,16 @@
       r.style.setProperty("--panel-radius", `${(W * 0.022 / W) * 100}vw`);
     }
 
+    function applyZoneLayout() {
+      metrics.middleZoneY = metrics.topZoneH;
+      metrics.middleZoneH = Math.max(H * 0.3, H - metrics.topZoneH - metrics.bottomZoneH);
+      metrics.brickTopY = metrics.middleZoneY + metrics.middleZoneH * 0.06;
+      metrics.brickAreaH = metrics.middleZoneH * 0.58;
+    }
+
     function computeMetrics() {
       metrics.topZoneH = H * 0.08;
       metrics.bottomZoneH = H * 0.18;
-      metrics.middleZoneY = metrics.topZoneH;
-      metrics.middleZoneH = H * 0.74;
 
       metrics.paddleW = W * 0.18;
       metrics.paddleH = H * 0.022;
@@ -492,8 +520,6 @@
 
       metrics.brickPadX = W * 0.05;
       metrics.brickGap = W * 0.004;
-      metrics.brickTopY = metrics.middleZoneY + metrics.middleZoneH * 0.06;
-      metrics.brickAreaH = metrics.middleZoneH * 0.58;
 
       metrics.hudFont = W * 0.035;
       metrics.hudPad = W * 0.02;
@@ -504,6 +530,15 @@
       metrics.baseSpeed = W * 0.95;
       metrics.speedRamp = W * 0.009;
       metrics.loseY = H * 0.97;
+      applyZoneLayout();
+    }
+
+    function syncTopSafeZoneFromHUD() {
+      const hudBottom = hudBar.getBoundingClientRect().bottom;
+      const minTop = H * 0.08;
+      const maxTop = H * 0.24;
+      metrics.topZoneH = clamp(hudBottom + H * 0.008, minTop, maxTop);
+      applyZoneLayout();
     }
 
     function createCanvas(w, h) {
@@ -609,6 +644,8 @@
       W = window.innerWidth;
       H = window.innerHeight;
       computeMetrics();
+      updateRootVars();
+      syncTopSafeZoneFromHUD();
       updateRootVars();
 
       canvas.width = Math.floor(W * DPR);
